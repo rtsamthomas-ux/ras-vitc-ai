@@ -151,6 +151,25 @@ function loadEnv(file) {
   }
 }
 
+/**
+ * Vercel also discovers this root file as a function. Export a request handler
+ * so the homepage works there, while keeping the same app routes for /api/*.
+ */
+let vercelApp;
+export default async function vercelHandler(req, res) {
+  const pathname = new URL(req.url, "http://x").pathname;
+  if (!pathname.startsWith("/api/")) {
+    if (req.method !== "GET" && req.method !== "HEAD") {
+      return json(res, 405, { error: "Method not allowed." });
+    }
+    return serveStatic(req, res, pathname);
+  }
+
+  vercelApp ||= createApp();
+  const { handler } = await vercelApp;
+  return handler(req, res);
+}
+
 // ------------------------------------------------------------------ start
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const { handler, state } = await createApp();
